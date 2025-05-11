@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-API_URL = "http://localhost:8000"
+API_URL = "https://rag-chatbot-h8q6.onrender.com"
 
 st.title("🦾 PDF Q&A RAG Demo")
 
