@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+PyPDF2
+groq
+pinecone-client
+pydantic-settings
+numpy
+sentence-transformers
+python-multipart
