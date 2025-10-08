@@ -2,7 +2,7 @@ import PyPDF2
 import numpy as np
 import uuid
 from groq import Groq
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from pinecone import ServerlessSpec
 
 class RAGPipeline:
