@@ -722,7 +722,7 @@
                 showToast('❌ Failed to delete document', true);
             }
         }
-        async function formatMessage(text) {
+        function formatMessage(text) {
             // Auto-format bullet points
             text = text.replace(/^- (.+)$/gm, '• $1');
             text = text.replace(/^\* (.+)$/gm, '• $1');
@@ -743,7 +743,7 @@
         }
 
 
-        async function sendMessage() {
+        function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             const loadingMsg = {type: 'bot',text: '🤔 Reading through your document...',sources: [] };
