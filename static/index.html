@@ -95,29 +95,40 @@
             font-size: 13px;
         }
 
-        .demo-badge {
+        .upload-section {
             background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: 15px;
             padding: 20px;
             text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
         }
 
-        .demo-icon {
+        .upload-section:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .upload-icon {
             font-size: 40px;
             margin-bottom: 10px;
         }
 
-        .demo-text {
+        .upload-text {
             color: white;
             font-size: 14px;
             font-weight: 600;
             margin-bottom: 5px;
         }
 
-        .demo-subtext {
+        .upload-subtext {
             color: rgba(255, 255, 255, 0.7);
             font-size: 12px;
+        }
+
+        #fileInput {
+            display: none;
         }
 
         .documents-section {
@@ -167,6 +178,23 @@
         .doc-meta {
             color: rgba(255, 255, 255, 0.6);
             font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .delete-btn {
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 14px;
+            background: none;
+            border: none;
+            padding: 0;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
         }
 
         .chat-container {
@@ -415,6 +443,25 @@
                 transform: translateY(0);
             }
         }
+
+        .upload-progress {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -422,13 +469,20 @@
         <div class="sidebar">
             <div class="logo">
                 <h1>🚀 RAG Chat</h1>
-                <p>AI Document Assistant (Demo)</p>
+                <p>AI Document Assistant</p>
             </div>
 
-            <div class="demo-badge">
-                <div class="demo-icon">✅</div>
-                <div class="demo-text">Demo Document Loaded</div>
-                <div class="demo-subtext">Ready to answer questions!</div>
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Upload PDF Document</div>
+                <div class="upload-subtext">Click or drag to upload</div>
+                <input type="file" id="fileInput" accept=".pdf" />
+            </div>
+
+            <div class="upload-progress" id="uploadProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
             </div>
 
             <div class="documents-section">
@@ -439,15 +493,15 @@
 
         <div class="chat-container">
             <div class="chat-header">
-                <h2 id="chatTitle">Loading...</h2>
-                <p id="chatSubtitle">Please wait...</p>
+                <h2 id="chatTitle">Select a Document</h2>
+                <p id="chatSubtitle">Upload a PDF or select existing document</p>
             </div>
 
             <div class="chat-messages" id="chatMessages">
                 <div class="empty-state">
                     <div class="empty-state-icon">💬</div>
-                    <h3>Demo Ready!</h3>
-                    <p>Ask questions about the demo document</p>
+                    <h3>Welcome to RAG Chatbot!</h3>
+                    <p>Upload a PDF document to start chatting</p>
                 </div>
             </div>
 
@@ -456,7 +510,7 @@
                     <input 
                         type="text" 
                         id="messageInput" 
-                        placeholder="Loading demo document..."
+                        placeholder="Select a document to start chatting..."
                         disabled
                         onkeypress="if(event.key==='Enter') sendMessage()"
                     >
@@ -472,19 +526,91 @@
         let documents = [];
         let currentDocId = null;
 
-        // Auto-load demo document on page load
+        // Auto-load documents on page load
         window.onload = async () => {
             await loadDocuments();
-            
-            // Auto-select first document (demo doc)
-            if (documents.length > 0) {
-                const doc = documents[0];
-                selectDocument(doc.doc_id, doc.filename);
-            } else {
-                document.getElementById('chatTitle').textContent = 'No Document Loaded';
-                document.getElementById('chatSubtitle').textContent = 'Please check server logs';
-            }
         };
+
+        // Setup upload handlers
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadSection.addEventListener('click', () => fileInput.click());
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.style.borderColor = 'rgba(255, 255, 255, 0.7)';
+        });
+        
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        });
+        
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            if (e.dataTransfer.files.length) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        async function handleFileUpload(file) {
+            if (!file.type.includes('pdf')) {
+                showToast('❌ Please upload a PDF file', true);
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                showToast('❌ File too large (max 10MB)', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show progress bar
+            document.getElementById('uploadProgress').style.display = 'block';
+            document.getElementById('progressFill').style.width = '30%';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                document.getElementById('progressFill').style.width = '70%';
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('progressFill').style.width = '100%';
+                    
+                    setTimeout(() => {
+                        document.getElementById('uploadProgress').style.display = 'none';
+                        document.getElementById('progressFill').style.width = '0%';
+                    }, 500);
+
+                    showToast('✅ Document uploaded successfully!');
+                    await loadDocuments();
+                    
+                    // Auto-select the newly uploaded document
+                    if (data.doc_id) {
+                        selectDocument(data.doc_id, file.name);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Upload failed');
+                }
+            } catch (error) {
+                document.getElementById('uploadProgress').style.display = 'none';
+                console.error('Upload error:', error);
+                showToast(`❌ Upload failed: ${error.message}`, true);
+            }
+        }
 
         async function loadDocuments() {
             try {
@@ -502,7 +628,7 @@
             const container = document.getElementById('documentsList');
             
             if (documents.length === 0) {
-                container.innerHTML = '<p style="color: rgba(255,255,255,0.5); font-size: 13px;">Loading...</p>';
+                container.innerHTML = '<p style="color: rgba(255,255,255,0.5); font-size: 13px; text-align: center;">No documents uploaded</p>';
                 return;
             }
 
@@ -510,7 +636,10 @@
                 <div class="document-card ${doc.doc_id === currentDocId ? 'active' : ''}" 
                      onclick="selectDocument('${doc.doc_id}', '${doc.filename}')">
                     <div class="doc-name">📄 ${doc.filename}</div>
-                    <div class="doc-meta">${doc.chunks} chunks</div>
+                    <div class="doc-meta">
+                        <span>${doc.chunks} chunks</span>
+                        <button class="delete-btn" onclick="deleteDocument('${doc.doc_id}'); event.stopPropagation();">🗑️</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -527,6 +656,46 @@
             addMessage('bot', `Hi! I've loaded "${filename}". What would you like to know about it?`);
             
             renderDocuments();
+        }
+
+        async function deleteDocument(docId) {
+            if (!confirm('Are you sure you want to delete this document?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/documents/${docId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showToast('✅ Document deleted');
+                    
+                    // If we deleted the currently selected document
+                    if (currentDocId === docId) {
+                        currentDocId = null;
+                        document.getElementById('chatTitle').textContent = 'Select a Document';
+                        document.getElementById('chatSubtitle').textContent = 'Upload a PDF or select existing document';
+                        document.getElementById('messageInput').disabled = true;
+                        document.getElementById('messageInput').placeholder = 'Select a document to start chatting...';
+                        document.getElementById('sendBtn').disabled = true;
+                        document.getElementById('chatMessages').innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📄</div>
+                                <h3>Select a Document</h3>
+                                <p>Choose a document to start chatting</p>
+                            </div>
+                        `;
+                    }
+                    
+                    await loadDocuments();
+                } else {
+                    throw new Error('Delete failed');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                showToast('❌ Failed to delete document', true);
+            }
         }
 
         async function sendMessage() {
@@ -596,7 +765,7 @@
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.textContent = message;
-            if (isError) toast.style.background = '#ff6b6b';
+            if (isError) toast.style.background = 'rgba(255, 107, 107, 0.9)';
             document.body.appendChild(toast);
 
             setTimeout(() => {
