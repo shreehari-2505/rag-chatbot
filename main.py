@@ -9,6 +9,9 @@ import uvicorn
 from contextlib import asynccontextmanager
 import os
 
+
+store = DocumentStore()
+
 # Global doc ID for demo document
 DEMO_DOC_ID = "demo-document-001"
 
