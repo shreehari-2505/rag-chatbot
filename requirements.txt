@@ -1,7 +1,7 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 PyPDF2==3.0.1
-groq==0.11.0
+groq==0.13.0
 pinecone==5.0.0
 pydantic-settings==2.1.0
 numpy==1.26.2
@@ -9,3 +9,4 @@ sentence-transformers==3.0.1
 transformers==4.44.0
 torch==2.4.0
 python-multipart==0.0.6
+httpx==0.27.0
