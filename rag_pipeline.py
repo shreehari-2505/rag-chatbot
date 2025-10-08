@@ -29,21 +29,23 @@ class RAGPipeline:
             )
         return self.pc.Index(self.index_name)
 
-    # ---- PDF extraction ----
+    # ---- PDF extraction ---- 🔥 FIXED: Uses file_path from disk
     def extract_text_from_pdf(self, pdf_path):
+        """Extract text from PDF file on disk"""
         text = ""
         try:
+            # 🚀 Open the saved file from disk (NOT upload_file.file)
             with open(pdf_path, "rb") as f:
                 pdf_reader = PyPDF2.PdfReader(f)
-            # ... rest of code
-    
-            for page in pdf_reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + " "
+                
+                for page in pdf_reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + " "
+                        
             print(f"✅ Extracted {len(text)} characters from {pdf_path}")
-        except PyPDF2.PdfReadError:
-            raise ValueError("Invalid PDF file")
+        except Exception as e:
+            raise Exception(f"Failed to read PDF: {str(e)}")
         return text
 
     def chunk_text(self, text, chunk_size=500):
@@ -75,6 +77,7 @@ class RAGPipeline:
         print("✅ Pinecone index populated!")
 
     def process_document(self, pdf_path):
+        """Process PDF from disk path"""
         text = self.extract_text_from_pdf(pdf_path)
         chunks = self.chunk_text(text)
         embeddings = self.embed_texts(chunks)
@@ -96,17 +99,10 @@ class RAGPipeline:
         return {"answer": answer, "sources": contexts}
 
     def _build_prompt(self, question, contexts):
-        context_str = "\n\n".join(
+        context_str = "".join(
             f"[Context {i+1}]: {c}" for i, c in enumerate(contexts)
         )
-        return f"""You are a helpful AI assistant. Answer the question based ONLY on the context below.
-
-Context:
-{context_str}
-
-Question: {question}
-
-Answer (be specific and cite which context you used):"""
+        return f"""You are a helpful AI assistant. Answer the question based ONLY on the context below. Context: {context_str} Question: {question} Answer (be specific and cite which context you used):"""
 
     def _ask_groq(self, prompt):
         response = self.groq.chat.completions.create(

@@ -6,9 +6,8 @@ from pydantic import BaseModel
 from document_store import DocumentStore
 from settings import settings
 import uvicorn
-from contextlib import asynccontextmanager
 import os
-
+import io
 
 store = DocumentStore()
 
@@ -24,10 +23,7 @@ async def lifespan(app: FastAPI):
     if os.path.exists("demo_document.pdf"):
         print("📄 Pre-loading demo document...")
         try:
-            from fastapi import UploadFile
-            import io
-            
-            # Simulate upload
+            # Read file content
             with open("demo_document.pdf", "rb") as f:
                 file_content = f.read()
             
@@ -37,7 +33,7 @@ async def lifespan(app: FastAPI):
                 file=io.BytesIO(file_content)
             )
             
-            # Process document (has time at startup!)
+            # Process document
             doc_id = store.add_document(upload_file)
             print(f"✅ Demo document loaded! doc_id: {doc_id}")
             
@@ -53,8 +49,6 @@ async def lifespan(app: FastAPI):
     print("👋 Shutting down...")
 
 app = FastAPI(title="RAG Chatbot API", lifespan=lifespan)
-
-
 
 # ---------- Models ----------
 class QueryRequest(BaseModel):
@@ -83,15 +77,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         if not file.filename.lower().endswith(".pdf"):
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
         
-        # Validate file size (optional, but recommended)
-        contents = await file.read()
-        if len(contents) > 10 * 1024 * 1024:  # 10MB limit
-            raise HTTPException(status_code=400, detail="File too large (max 10MB)")
-        
-        # Create a temporary file or use in-memory processing
-        file.file.seek(0)  # Reset file pointer
-        
-        # Add to document store
+        # 🔥 FIXED: Don't read contents into memory - pass UploadFile directly
+        # document_store will handle saving to disk
         doc_id = store.add_document(file)
         
         return {
@@ -103,7 +90,6 @@ async def upload_pdf(file: UploadFile = File(...)):
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/documents")
 def list_documents():
@@ -144,6 +130,5 @@ except:
     pass  # No static folder yet
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 8070))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -46,9 +46,11 @@ class DocumentStore:
         filename = upload_file.filename
         file_path = self.upload_dir / filename
 
-        # Save the file
+        # 🔥 FIXED: Save file to disk ONCE - upload_file.file gets consumed here
         with open(file_path, "wb") as f:
             shutil.copyfileobj(upload_file.file, f)
+        
+        print(f"📄 Saved file to: {file_path}")
 
         # Generate document ID
         doc_id = str(uuid.uuid4())
@@ -61,7 +63,7 @@ class DocumentStore:
             index_name=index_name,
         )
 
-        # Process the document
+        # 🚀 FIXED: Pass the file PATH (string), not upload_file.file
         chunks = rag.process_document(str(file_path))
 
         # Store document metadata
@@ -70,7 +72,7 @@ class DocumentStore:
             "index_name": index_name,
             "chunks": len(chunks)
         }
-        self._save_docs()  # Persist to disk
+        self._save_docs()
 
         return doc_id
 
@@ -86,5 +88,5 @@ class DocumentStore:
         index_name = self.docs[doc_id]["index_name"]
         self.pc.delete_index(index_name)
         self.docs.pop(doc_id)
-        self._save_docs()  # Persist to disk
+        self._save_docs()
         return True
