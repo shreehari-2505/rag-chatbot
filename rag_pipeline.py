@@ -102,13 +102,16 @@ class RAGPipeline:
         context_str = "".join(
             f"[Context {i+1}]: {c}" for i, c in enumerate(contexts)
         )
-        return f"""You are a helpful AI assistant. Answer the question based ONLY on the context below. Context: {context_str} Question: {question} Answer (be specific and cite which context you used):"""
+        return f"""You are a helpful AI assistant. Answer the question based on the context below. Context: {context_str} Question: {question} Answer naturally and conversationally. If the info isn't in the documents, just say "I don't see that information in your documents." Keep it friendly and clear!"""
 
     def _ask_groq(self, prompt):
         response = self.groq.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+            messages=[{
+                "role": "system", 
+                "content": "You're a friendly document assistant. Answer questions based on the provided context naturally and conversationally. If info isn't in the documents, say so honestly."
+            },{"role": "user", "content": prompt}],
+            temperature=0.5,
             max_tokens=700,
         )
         return response.choices[0].message.content.strip()
