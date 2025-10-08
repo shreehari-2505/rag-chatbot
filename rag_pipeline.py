@@ -32,13 +32,18 @@ class RAGPipeline:
     # ---- PDF extraction ----
     def extract_text_from_pdf(self, pdf_path):
         text = ""
-        with open(pdf_path, "rb") as f:
-            pdf_reader = PyPDF2.PdfReader(f)
+        try:
+            with open(pdf_path, "rb") as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+            # ... rest of code
+    
             for page in pdf_reader.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + " "
-        print(f"✅ Extracted {len(text)} characters from {pdf_path}")
+            print(f"✅ Extracted {len(text)} characters from {pdf_path}")
+        except PyPDF2.PdfReadError:
+            raise ValueError("Invalid PDF file")
         return text
 
     def chunk_text(self, text, chunk_size=500):
