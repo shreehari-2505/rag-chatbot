@@ -131,6 +131,25 @@
             display: none;
         }
 
+        .upload-progress {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
         .documents-section {
             flex: 1;
             overflow-y: auto;
@@ -442,25 +461,6 @@
                 opacity: 1;
                 transform: translateY(0);
             }
-        }
-
-        .upload-progress {
-            margin-top: 15px;
-            display: none;
-        }
-
-        .progress-bar {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            width: 0%;
-            transition: width 0.3s;
         }
     </style>
 </head>
