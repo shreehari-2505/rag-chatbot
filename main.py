@@ -77,11 +77,32 @@ def root():
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    """Upload disabled on free tier - use pre-loaded demo doc"""
-    raise HTTPException(
-        status_code=503,
-        detail="Upload disabled on free tier due to timeout limits. Use pre-loaded demo document."
-    )
+    """Upload a PDF document"""
+    try:
+        # Validate file type
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        
+        # Validate file size (optional, but recommended)
+        contents = await file.read()
+        if len(contents) > 10 * 1024 * 1024:  # 10MB limit
+            raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+        
+        # Create a temporary file or use in-memory processing
+        file.file.seek(0)  # Reset file pointer
+        
+        # Add to document store
+        doc_id = store.add_document(file)
+        
+        return {
+            "doc_id": doc_id,
+            "filename": file.filename,
+            "message": "Document uploaded successfully"
+        }
+        
+    except Exception as e:
+        print(f"Upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/documents")
