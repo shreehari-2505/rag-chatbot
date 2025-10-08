@@ -10,7 +10,10 @@ class RAGPipeline:
         self.groq = Groq(api_key=groq_api_key)
         self.pc = pinecone_client
         self.index_name = index_name
-        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        
+        # Initialize FastEmbed (lightweight, CPU-optimized!)
+        self.embedder = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        
         self.index = self._init_index()
 
     # ---- Pinecone setup ----
@@ -46,10 +49,12 @@ class RAGPipeline:
 
     # ---- Embeddings + Pinecone ----
     def embed_texts(self, texts):
-        """Generate semantic embeddings using sentence-transformers"""
-        print(f"🧠 Embedding {len(texts)} texts...")
-        embeddings = self.embedder.encode(texts, show_progress_bar=True)
-        return embeddings.astype("float32")
+        """Fast embeddings with ONNX runtime"""
+        print(f"🧠 Embedding {len(texts)} texts with FastEmbed...")
+        
+        # FastEmbed returns generator, convert to list
+        embeddings = list(self.embedder.embed(texts))
+        return np.array(embeddings, dtype='float32')
 
     def upload_to_pinecone(self, chunks, embeddings):
         vectors = []
