@@ -318,6 +318,23 @@
             color: #555;
             border-left: 3px solid #667eea;
         }
+        .expand-source {
+            color: #667eea;
+            font-size: 12px;
+            margin-left: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .expand-source:hover {
+            text-decoration: underline;
+        }
+        
+        .source-preview {
+            display: inline;
+        }
+
 
         .chat-input-container {
             padding: 25px 30px;
@@ -499,9 +516,12 @@
 
             <div class="chat-messages" id="chatMessages">
                 <div class="empty-state">
-                    <div class="empty-state-icon">💬</div>
-                    <h3>Welcome to RAG Chatbot!</h3>
-                    <p>Upload a PDF document to start chatting</p>
+                    <div style="font-size: 48px; margin-bottom: 20px;">💬</div>
+                    <h3>Ready to chat with your documents?</h3>
+                    <p>I'm here to help you understand what's in your PDFs. Ask me anything!</p>
+                    <p style="font-size: 14px; opacity: 0.7; margin-top: 20px;">
+                    Try: "What's this document about?" or "Summarize the main points"
+                    </p>
                 </div>
             </div>
 
@@ -697,10 +717,31 @@
                 showToast('❌ Failed to delete document', true);
             }
         }
+        async function formatMessage(text) {
+            // Auto-format bullet points
+            text = text.replace(/^- (.+)$/gm, '• $1');
+            text = text.replace(/^\* (.+)$/gm, '• $1');
+            
+            // Auto-format numbered lists
+            text = text.replace(/^(\d+)\. (.+)$/gm, '<strong>$1.</strong> $2');
+            
+            // Bold **text**
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            
+            // Italic *text*
+            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            
+            // Line breaks
+            text = text.replace(/\n/g, '<br>');
+            
+            return text;
+        }
+
 
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
+            const loadingMsg = {type: 'bot',text: '🤔 Reading through your document...',sources: [] };
 
             if (!message || !currentDocId) return;
 
@@ -729,8 +770,23 @@
                     addMessage('bot', '❌ Error: ' + data.detail);
                 }
             } catch (error) {
-                addMessage('bot', '❌ Network error. Please try again.');
+            console.error('Error:', error);
+            
+            let errorMsg = '❌ Oops! ';
+            
+            if (error.message && error.message.includes('timeout')) {
+                errorMsg += 'Request timed out. Try a shorter question?';
+            } else if (error.message && error.message.includes('Failed to fetch')) {
+                errorMsg += 'Connection issue. Check your internet?';
+            } else if (error.message && error.message.includes('500')) {
+                errorMsg += 'Server error. Please try again in a moment.';
+            } else {
+                errorMsg += 'Something went wrong. Try again?';
             }
+            
+            addMessage('bot', errorMsg);
+        }
+
 
             sendBtn.disabled = false;
             sendBtn.innerHTML = 'Send 🚀';
@@ -745,16 +801,26 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}`;
 
-            let html = `<div class="message-content">${text}</div>`;
+            let html = `<div class="message-content">${formatMessage(text)}</div>`;
 
-            if (sources && sources.length > 0) {
-                html += '<div class="sources">';
-                html += '<div class="sources-title">📚 Sources:</div>';
+
+              if (sources && sources.length > 0) {
+                html += `<div class="sources">`;
+                html += `<div class="sources-title">📚 From your document:</div>`;
                 sources.forEach((source, i) => {
-                    html += `<div class="source-item"><strong>[${i+1}]</strong> ${source.substring(0, 200)}...</div>`;
+                    // Truncate long sources
+                    const preview = source.length > 150 
+                        ? source.substring(0, 150) + '...' 
+                        : source;
+                    
+                    html += `<div class="source-item" data-full="${source.replace(/"/g, '&quot;')}" data-index="${i}">
+                        <strong>${i+1}.</strong> <span class="source-preview">${preview}</span>
+                        ${source.length > 150 ? `<a href="#" class="expand-source">Show more</a>` : ''}
+                    </div>`;
                 });
-                html += '</div>';
+                html += `</div>`;
             }
+
 
             messageDiv.innerHTML = html;
             messagesContainer.appendChild(messageDiv);
@@ -773,6 +839,25 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
+        // Handle "Show more" clicks for sources
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('expand-source')) {
+        e.preventDefault();
+        const sourceItem = e.target.closest('.source-item');
+        const fullText = sourceItem.getAttribute('data-full');
+        const preview = sourceItem.querySelector('.source-preview');
+        
+        if (e.target.textContent === 'Show more') {
+            preview.textContent = fullText;
+            e.target.textContent = 'Show less';
+        } else {
+            const truncated = fullText.substring(0, 150) + '...';
+            preview.textContent = truncated;
+            e.target.textContent = 'Show more';
+        }
+    }
+});
+
     </script>
 </body>
 </html>
