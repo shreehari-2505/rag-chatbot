@@ -40,28 +40,39 @@ class DocumentStore:
             for doc_id, d in self.docs.items()
         ]
     
-    def add_document(self, upload_file):
-        file_path = self.upload_dir / upload_file.filename
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(upload_file.file, f)
-        
-        doc_id = str(uuid.uuid4())
-        index_name = self._make_index_name(doc_id)
-        
-        rag = RAGPipeline(
-            groq_api_key=settings.groq_api_key,
-            pinecone_client=self.pc,
-            index_name=index_name,
-        )
-        
-        chunks = rag.process_document(str(file_path))
-        self.docs[doc_id] = {
-            "filename": upload_file.filename,
-            "index_name": index_name,
-            "chunks": len(chunks)
-        }
-        self._save_docs()  # Persist to disk
-        return doc_id
+   def add_document(self, upload_file):
+    """Handle uploaded file and add to document store"""
+    # Create unique filename
+    filename = upload_file.filename
+    file_path = self.upload_dir / filename
+    
+    # Save the file
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(upload_file.file, f)
+    
+    # Generate document ID
+    doc_id = str(uuid.uuid4())
+    index_name = self._make_index_name(doc_id)
+    
+    # Create RAG pipeline
+    rag = RAGPipeline(
+        groq_api_key=settings.groq_api_key,
+        pinecone_client=self.pc,
+        index_name=index_name,
+    )
+    
+    # Process the document
+    chunks = rag.process_document(str(file_path))
+    
+    # Store document metadata
+    self.docs[doc_id] = {
+        "filename": filename,
+        "index_name": index_name,
+        "chunks": len(chunks)
+    }
+    self._save_docs()  # Persist to disk
+    
+    return doc_id
     
     def get_rag_pipeline(self, doc_id: str) -> RAGPipeline:
         if doc_id not in self.docs:
