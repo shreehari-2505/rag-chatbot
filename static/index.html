@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAG Chatbot 🚀 - Multi-Document AI</title>
+    <title>RAG Chatbot 🚀 - AI Document Assistant</title>
     <style>
         * {
             margin: 0;
@@ -23,7 +23,6 @@
             overflow: hidden;
         }
 
-        /* Animated background circles */
         body::before {
             content: '';
             position: absolute;
@@ -69,7 +68,6 @@
             z-index: 1;
         }
 
-        /* LEFT SIDEBAR - Document Management */
         .sidebar {
             background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
@@ -97,42 +95,29 @@
             font-size: 13px;
         }
 
-        .upload-zone {
+        .demo-badge {
             background: rgba(255, 255, 255, 0.1);
-            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 15px;
             padding: 20px;
             text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
         }
 
-        .upload-zone:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: scale(1.02);
-        }
-
-        .upload-zone input {
-            display: none;
-        }
-
-        .upload-icon {
+        .demo-icon {
             font-size: 40px;
             margin-bottom: 10px;
         }
 
-        .upload-text {
+        .demo-text {
             color: white;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;
+            margin-bottom: 5px;
         }
 
-        .upload-subtext {
-            color: rgba(255, 255, 255, 0.6);
+        .demo-subtext {
+            color: rgba(255, 255, 255, 0.7);
             font-size: 12px;
-            margin-top: 5px;
         }
 
         .documents-section {
@@ -184,19 +169,6 @@
             font-size: 12px;
         }
 
-        .doc-delete {
-            float: right;
-            color: #ff6b6b;
-            cursor: pointer;
-            font-size: 16px;
-            transition: transform 0.2s;
-        }
-
-        .doc-delete:hover {
-            transform: scale(1.2);
-        }
-
-        /* RIGHT SIDE - Chat Interface */
         .chat-container {
             display: flex;
             flex-direction: column;
@@ -392,7 +364,6 @@
             font-size: 14px;
         }
 
-        /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -411,7 +382,6 @@
             background: rgba(255, 255, 255, 0.5);
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
@@ -449,38 +419,35 @@
 </head>
 <body>
     <div class="container">
-        <!-- LEFT SIDEBAR -->
         <div class="sidebar">
             <div class="logo">
                 <h1>🚀 RAG Chat</h1>
-                <p>Multi-Document AI Assistant</p>
+                <p>AI Document Assistant (Demo)</p>
             </div>
 
-            <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-                <input type="file" id="fileInput" accept=".pdf" onchange="uploadDocument()">
-                <div class="upload-icon">📄</div>
-                <div class="upload-text">Upload PDF</div>
-                <div class="upload-subtext">Click or drag to upload</div>
+            <div class="demo-badge">
+                <div class="demo-icon">✅</div>
+                <div class="demo-text">Demo Document Loaded</div>
+                <div class="demo-subtext">Ready to answer questions!</div>
             </div>
 
             <div class="documents-section">
-                <h3>📚 Your Documents</h3>
+                <h3>📚 Documents</h3>
                 <div id="documentsList"></div>
             </div>
         </div>
 
-        <!-- RIGHT CHAT -->
         <div class="chat-container">
             <div class="chat-header">
-                <h2 id="chatTitle">Select a Document</h2>
-                <p id="chatSubtitle">Upload a PDF to start chatting</p>
+                <h2 id="chatTitle">Loading...</h2>
+                <p id="chatSubtitle">Please wait...</p>
             </div>
 
             <div class="chat-messages" id="chatMessages">
                 <div class="empty-state">
                     <div class="empty-state-icon">💬</div>
-                    <h3>Start Your Conversation</h3>
-                    <p>Upload a PDF document and ask questions about it</p>
+                    <h3>Demo Ready!</h3>
+                    <p>Ask questions about the demo document</p>
                 </div>
             </div>
 
@@ -489,7 +456,7 @@
                     <input 
                         type="text" 
                         id="messageInput" 
-                        placeholder="Ask a question about your document..."
+                        placeholder="Loading demo document..."
                         disabled
                         onkeypress="if(event.key==='Enter') sendMessage()"
                     >
@@ -505,9 +472,18 @@
         let documents = [];
         let currentDocId = null;
 
-        // Load documents on page load
-        window.onload = () => {
-            loadDocuments();
+        // Auto-load demo document on page load
+        window.onload = async () => {
+            await loadDocuments();
+            
+            // Auto-select first document (demo doc)
+            if (documents.length > 0) {
+                const doc = documents[0];
+                selectDocument(doc.doc_id, doc.filename);
+            } else {
+                document.getElementById('chatTitle').textContent = 'No Document Loaded';
+                document.getElementById('chatSubtitle').textContent = 'Please check server logs';
+            }
         };
 
         async function loadDocuments() {
@@ -518,6 +494,7 @@
                 renderDocuments();
             } catch (error) {
                 console.error('Failed to load documents:', error);
+                showToast('❌ Failed to load documents', true);
             }
         }
 
@@ -525,14 +502,13 @@
             const container = document.getElementById('documentsList');
             
             if (documents.length === 0) {
-                container.innerHTML = '<p style="color: rgba(255,255,255,0.5); font-size: 13px;">No documents yet</p>';
+                container.innerHTML = '<p style="color: rgba(255,255,255,0.5); font-size: 13px;">Loading...</p>';
                 return;
             }
 
             container.innerHTML = documents.map(doc => `
                 <div class="document-card ${doc.doc_id === currentDocId ? 'active' : ''}" 
                      onclick="selectDocument('${doc.doc_id}', '${doc.filename}')">
-                    <span class="doc-delete" onclick="event.stopPropagation(); deleteDocument('${doc.doc_id}')">🗑️</span>
                     <div class="doc-name">📄 ${doc.filename}</div>
                     <div class="doc-meta">${doc.chunks} chunks</div>
                 </div>
@@ -547,44 +523,10 @@
             document.getElementById('messageInput').placeholder = `Ask about ${filename}...`;
             document.getElementById('sendBtn').disabled = false;
             
-            // Clear chat and show welcome message
             document.getElementById('chatMessages').innerHTML = '';
             addMessage('bot', `Hi! I've loaded "${filename}". What would you like to know about it?`);
             
             renderDocuments();
-        }
-
-        async function uploadDocument() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            
-            if (!file) return;
-
-            showToast('📤 Uploading ' + file.name + '...');
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showToast('✅ ' + file.name + ' uploaded successfully!');
-                    await loadDocuments();
-                    selectDocument(data.doc_id, data.filename);
-                } else {
-                    showToast('❌ Upload failed: ' + data.detail, true);
-                }
-            } catch (error) {
-                showToast('❌ Network error', true);
-            }
-
-            fileInput.value = '';
         }
 
         async function sendMessage() {
@@ -628,7 +570,6 @@
         function addMessage(sender, text, sources = null) {
             const messagesContainer = document.getElementById('chatMessages');
             
-            // Remove empty state
             const emptyState = messagesContainer.querySelector('.empty-state');
             if (emptyState) emptyState.remove();
 
@@ -649,39 +590,6 @@
             messageDiv.innerHTML = html;
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        async function deleteDocument(docId) {
-            if (!confirm('Delete this document?')) return;
-
-            try {
-                const response = await fetch(`/documents/${docId}`, {
-                    method: 'DELETE'
-                });
-
-                if (response.ok) {
-                    showToast('🗑️ Document deleted');
-                    if (docId === currentDocId) {
-                        currentDocId = null;
-                        document.getElementById('chatTitle').textContent = 'Select a Document';
-                        document.getElementById('chatSubtitle').textContent = 'Upload a PDF to start chatting';
-                        document.getElementById('messageInput').disabled = true;
-                        document.getElementById('sendBtn').disabled = true;
-                        document.getElementById('chatMessages').innerHTML = `
-                            <div class="empty-state">
-                                <div class="empty-state-icon">💬</div>
-                                <h3>Start Your Conversation</h3>
-                                <p>Upload a PDF document and ask questions about it</p>
-                            </div>
-                        `;
-                    }
-                    await loadDocuments();
-                } else {
-                    showToast('❌ Failed to delete', true);
-                }
-            } catch (error) {
-                showToast('❌ Network error', true);
-            }
         }
 
         function showToast(message, isError = false) {
