@@ -241,12 +241,14 @@
         }
 
         .chat-messages {
-            flex: 1;
-            overflow-y: auto;
+            flex: 1 1 auto;  /* 🔥 CHANGED: Explicit flex-grow and flex-shrink */
+            overflow-y: scroll;  /* 🔥 CHANGED: Force scrollbar visibility */
+            overflow-x: hidden;
             padding: 30px;
             display: flex;
             flex-direction: column;
             gap: 20px;
+            height: 0;
         }
 
         .message {
