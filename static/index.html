@@ -743,7 +743,7 @@
         }
 
 
-        function sendMessage() {
+        async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             const loadingMsg = {type: 'bot',text: '🤔 Reading through your document...',sources: [] };
