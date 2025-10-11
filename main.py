@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from document_store import DocumentStore
 from settings import settings
@@ -40,15 +41,22 @@ async def lifespan(app: FastAPI):
             # Store globally
             global DEMO_DOC_ID
             DEMO_DOC_ID = doc_id
-            
         except Exception as e:
             print(f"❌ Failed to load demo document: {e}")
     
     yield
-    
     print("👋 Shutting down...")
 
 app = FastAPI(title="RAG Chatbot API", lifespan=lifespan)
+
+# 🔥 Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify your frontend domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------- Models ----------
 class QueryRequest(BaseModel):
@@ -60,6 +68,7 @@ class QueryResponse(BaseModel):
     sources: list
 
 # ---------- Endpoints ----------
+
 @app.get("/")
 def root():
     return {
@@ -77,8 +86,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         if not file.filename.lower().endswith(".pdf"):
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
         
-        # 🔥 FIXED: Don't read contents into memory - pass UploadFile directly
-        # document_store will handle saving to disk
+        # 🔥 Pass UploadFile directly - document_store handles disk save
         doc_id = store.add_document(file)
         
         return {
@@ -86,7 +94,6 @@ async def upload_pdf(file: UploadFile = File(...)):
             "filename": file.filename,
             "message": "Document uploaded successfully"
         }
-        
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -102,7 +109,9 @@ async def query_document(req: QueryRequest):
     try:
         print(f"🔍 Query: {req.question} (doc: {req.doc_id})")
         rag = store.get_rag_pipeline(req.doc_id)
-        result = rag.query(req.question)
+        
+        # 🔥 Pass doc_id to query for filtering
+        result = rag.query(req.question, req.doc_id)
         return result
     except KeyError:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -112,10 +121,11 @@ async def query_document(req: QueryRequest):
 
 @app.delete("/documents/{doc_id}")
 def delete_document(doc_id: str):
-    """Delete a document and its index"""
+    """Delete a document and its vectors"""
     success = store.delete_document(doc_id)
     if not success:
         raise HTTPException(status_code=404, detail="Document not found")
+    
     print(f"🗑️ Deleted document: {doc_id}")
     return {"status": "deleted", "doc_id": doc_id}
 
