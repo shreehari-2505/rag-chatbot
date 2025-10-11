@@ -3,7 +3,6 @@ import shutil
 import json
 from pathlib import Path
 from pinecone import Pinecone
-from rag_pipeline import RAGPipeline
 from settings import settings
 
 class DocumentStore:
